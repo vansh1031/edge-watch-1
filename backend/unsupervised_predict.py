@@ -6,6 +6,9 @@ Isolation Forest + K-Means use karta hai.
 Fault TYPE nahi bata sakta — sirf Normal/Anomaly + Cluster.
 """
 
+from compat import utf8_console, run_from_backend_dir
+utf8_console()
+
 import pickle
 import os
 import numpy as np

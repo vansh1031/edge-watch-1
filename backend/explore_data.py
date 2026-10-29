@@ -2,6 +2,10 @@
 Step 1: Data Exploration
 Chalao: python3 explore_data.py
 """
+from compat import utf8_console, run_from_backend_dir
+utf8_console()
+run_from_backend_dir()
+
 import pandas as pd
 import numpy as np
 import matplotlib

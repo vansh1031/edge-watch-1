@@ -7,6 +7,10 @@ Models jo train honge:
 2. Random Forest     → Fault classification (normal/warning/fault)
 3. RUL Estimator     → Remaining Useful Life (regression)
 """
+from compat import utf8_console, run_from_backend_dir
+utf8_console()
+run_from_backend_dir()
+
 import pandas as pd
 import numpy as np
 import pickle
@@ -194,7 +198,7 @@ model_info = {
     "fault_map":          fault_map,
     "trained_on_rows":    len(df),
 }
-with open(f"{MODEL_DIR}/model_info.json", "w") as f:
+with open(f"{MODEL_DIR}/model_info.json", "w", encoding="utf-8") as f:
     json.dump(model_info, f, indent=2)
 
 print("\n" + "=" * 50)

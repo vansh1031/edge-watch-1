@@ -1,0 +1,68 @@
+name: CI
+
+# Edge Watch must run on Windows and on the Jetson (Linux ARM64).
+# Every push is tested on Windows, Linux x64 and Linux ARM64.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Same command users run — creates backend/venv and installs everything
+      - name: Setup with run.py
+        run: python run.py --setup
+
+      - name: Pick venv python
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "VENV_PY=$PWD/backend/venv/Scripts/python.exe" >> "$GITHUB_ENV";
+          else echo "VENV_PY=$PWD/backend/venv/bin/python" >> "$GITHUB_ENV"; fi
+
+      - name: Backend tests
+        run: |
+          "$VENV_PY" -m pip install pytest
+          cd backend && "$VENV_PY" -m pytest -q tests
+
+      # Output redirected to a file → Windows uses cp1252; the emoji prints must not crash
+      - name: Backend starts and answers (output redirected)
+        env:
+          EDGEWATCH_SIM: auto
+          MQTT_BROKER: 127.0.0.1
+        run: |
+          cd backend
+          "$VENV_PY" app.py > ../backend-run.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:5005/api/health-check > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:5005/api/health-check
+          curl -sf "http://127.0.0.1:5005/api/history?range=all&limit=100" > /dev/null
+          curl -sf "http://127.0.0.1:5005/api/history/search?page=1" > /dev/null
+          test -f predictions.log
+
+      - name: Backend log
+        if: always()
+        run: cat backend-run.log || true
+
+      - name: Frontend build + tests
+        run: |
+          npm run build
+          npm test

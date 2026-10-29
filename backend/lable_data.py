@@ -7,6 +7,10 @@ Ye script 2 tarike se label karta hai:
 2. Isolation Forest → statistical anomaly detection se
 Dono ko combine karke final label banata hai.
 """
+from compat import utf8_console, run_from_backend_dir
+utf8_console()
+run_from_backend_dir()
+
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest

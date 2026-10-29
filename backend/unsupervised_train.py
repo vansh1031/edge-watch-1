@@ -9,6 +9,10 @@ Models jo train honge (no labels needed):
 Chalao: python3 unsupervised_train.py
 """
 
+from compat import utf8_console, run_from_backend_dir
+utf8_console()
+run_from_backend_dir()
+
 import pandas as pd
 import numpy as np
 import pickle

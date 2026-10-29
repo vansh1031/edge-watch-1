@@ -87,86 +87,27 @@ Includes:
 
 ---
 
-## 🖥️ Installation (Jetson / Linux)
+## 🖥️ Installation — Windows and Jetson / Linux
 
-### 1. Clone repo
-
-```bash
-git clone https://github.com/YOUR_USERNAME/edge-watch.git
-cd edge-watch
-
----
-
-## ⚙️ Tech Stack
-
-### Frontend
-- React (Vite)
-- TypeScript
-- Tailwind CSS
-- Recharts (graphs)
-- ShadCN UI
-
-### Backend
-- Python
-- Flask
-- Paho MQTT
-
-### Hardware
-- NVIDIA Jetson (Edge AI)
-
----
-
-## 📡 Data Flow
-
-1. Sensors send data via MQTT
-2. Flask subscribes to topic
-3. Backend exposes API (`/api/live-data`)
-4. Frontend fetches every 2 sec
-5. Charts + cards update in real-time
-
----
-
-## 🤖 Predictive Maintenance
-
-Includes:
-
-- Health Score
-- Failure Risk %
-- Remaining Life (days)
-- AI Confidence
-- Fault Detection (e.g. Bearing Fault)
-- Forecast graphs
-- Recommendations
-
-⚠️ Currently:
-- Uses mock AI data (fallback)
-- Can be replaced with real ML model
-
----
-
-## 🖥️ Installation (Jetson / Linux)
-
-### 1. Clone repo
+Needs **Python 3.11+** and **Node.js 18+** (Windows: install both from python.org / nodejs.org,
+tick "Add python.exe to PATH").
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/edge-watch.git
-cd edge-watch
-2. Backend Setup
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+git clone https://github.com/vansh1031/edge-watch-1.git
+cd edge-watch-1
+cp backend/.env.example backend/.env     # Windows: copy backend\.env.example backend\.env
+python run.py                            # Windows: py run.py   if "python" is not found
+```
 
-Run:
-python app.py
+`run.py` creates `backend/venv`, installs the Python and npm packages (first time only, again
+when they change) and starts the backend (port 5005) and the dashboard (port 8080).
+Open http://localhost:8080 — from another PC use the address `run.py` prints.
+`python run.py --backend` / `--frontend` starts only one part. Stop with **Ctrl+C**.
 
-3. Frontend Setup
-cd ..
-npm install
-npm run dev
+Windows: allow Python and Node.js when Windows Firewall asks, otherwise other PCs cannot
+reach ports 5005 / 8080.
 
-Open:
-http://localhost:8081
+Every push is tested on Windows, Linux x64 and Linux ARM64 (Jetson) — see `.github/workflows/ci.yml`.
 
 🔌 MQTT & Safety Configuration
 

@@ -18,6 +18,9 @@ New in this version:
   ✅ Live stream: GET /api/stream (Server-Sent Events)
 """
 
+from compat import utf8_console
+utf8_console()   # before anything prints ✅/🔴 (Windows cp1252 console would crash)
+
 from flask import Flask, Response, jsonify, request, stream_with_context
 from flask_cors import CORS
 import paho.mqtt.client as mqtt
@@ -41,7 +44,7 @@ from db import Store
 def _load_env_file(path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")):
     if not os.path.isfile(path):
         return
-    with open(path) as f:
+    with open(path, encoding="utf-8-sig") as f:    # -sig: Notepad may add a BOM
         for line in f:
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -115,7 +118,8 @@ RESUME_HOLD       = float(os.environ.get("RESUME_HOLD_S", 120))       # normal t
 CONTROL_TOKEN     = os.environ.get("CONTROL_TOKEN", "")               # required for POST /api/control/resume
 
 # ─── Logging Setup ────────────────────────────────────────────
-_log_handler = RotatingFileHandler("predictions.log", maxBytes=10 * 1024 * 1024, backupCount=5)
+_log_handler = RotatingFileHandler(os.path.join(BACKEND_DIR, "predictions.log"),
+                                   maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8")
 _log_handler.setFormatter(logging.Formatter(
     "%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
 log = logging.getLogger("edgewatch")
@@ -187,7 +191,7 @@ RECOMMENDATIONS_NORMAL = [
 def migrate_old_csv():
     if not os.path.isfile(CSV_FILE):
         return
-    with open(CSV_FILE, "r") as f:
+    with open(CSV_FILE, "r", encoding="utf-8", errors="replace") as f:
         first_line = f.readline().strip()
     if first_line.startswith("timestamp"):
         print("[CSV] Already migrated.")
@@ -195,18 +199,19 @@ def migrate_old_csv():
 
     print("[CSV] Migrating old CSV...")
     backup = CSV_FILE.replace(".csv", "_backup.csv")
-    with open(CSV_FILE, "r") as src, open(backup, "w") as dst:
+    with open(CSV_FILE, "r", encoding="utf-8", errors="replace") as src, \
+         open(backup, "w", encoding="utf-8") as dst:
         dst.write(src.read())
 
     old_rows = []
-    with open(CSV_FILE, "r") as f:
+    with open(CSV_FILE, "r", encoding="utf-8", errors="replace") as f:
         for row in csv.reader(f):
             if len(row) >= 12:
                 old_rows.append(row)
 
     now_ms = int(time.time() * 1000)
     total  = len(old_rows)
-    with open(CSV_FILE, "w", newline="") as f:
+    with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
         writer.writeheader()
         for i, row in enumerate(old_rows):

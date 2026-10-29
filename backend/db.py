@@ -217,7 +217,7 @@ class Store:
             return 0, 0
 
         rows, skipped = [], 0
-        with open(path, newline="", errors="replace") as f:
+        with open(path, newline="", encoding="utf-8", errors="replace") as f:
             reader = csv.DictReader((line.replace("\0", "") for line in f))
             for r in reader:
                 ts, mac = _num((r.get("timestamp") or "").strip()), (r.get("mac") or "").strip()

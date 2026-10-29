@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: true,          // all interfaces, IPv4 + IPv6 when available (Windows & Jetson)
     port: 8080,
     hmr: {
       overlay: false,
