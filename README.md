@@ -214,7 +214,7 @@ Edge optimization
 
 👨‍💻 Developed By
 
-Somya Jaiswal
+Vanshraj Singh Rathore — vanshraj.rathore.05227@gmail.com
 
 📜 License
 
