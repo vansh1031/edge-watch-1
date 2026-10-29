@@ -18,7 +18,7 @@ const DemoControlPanel = ({ control, onResume }: DemoControlPanelProps) => {
       <div className="flex items-center gap-2 mb-4">
         <Power size={16} className="text-accent" />
         <h3 className="text-sm font-semibold text-foreground">Machine Control</h3>
-        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-status-warning/15 status-warning font-semibold uppercase">
+        <span className="ml-auto text-[0.625rem] px-1.5 py-0.5 rounded-full bg-status-warning/15 status-warning font-semibold uppercase">
           demo — nothing sent
         </span>
       </div>
@@ -46,7 +46,7 @@ const DemoControlPanel = ({ control, onResume }: DemoControlPanelProps) => {
           {control.would_send.length > 0 && (
             <ul className="space-y-1">
               {control.would_send.slice(0, 4).map(c => (
-                <li key={`${c.timestamp}-${c.command}`} className="text-[11px] font-mono text-muted-foreground truncate">
+                <li key={`${c.timestamp}-${c.command}`} className="text-[0.6875rem] font-mono text-muted-foreground truncate">
                   {formatTime(c.timestamp)} · would send {c.command} · {c.reason}
                 </li>
               ))}
@@ -63,7 +63,7 @@ const DemoControlPanel = ({ control, onResume }: DemoControlPanelProps) => {
                 <PlayCircle size={16} /> Operator resume (demo)
               </button>
               {stillCritical && (
-                <p className="text-[11px] status-critical">Machine is still critical — resume is blocked, as in real use.</p>
+                <p className="text-[0.6875rem] status-critical">Machine is still critical — resume is blocked, as in real use.</p>
               )}
             </>
           )}

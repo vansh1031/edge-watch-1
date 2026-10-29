@@ -68,6 +68,14 @@
     @apply border-border;
   }
 
+  /* Auto-fit: every size in the app is in rem, so on laptop/desktop screens the whole
+     layout scales with the window (width and height) — 1280×720 up to 4K, no manual zoom.
+     Designed at 16px on 1920×1080. Phones and tablets keep 16px and the stacked layout. */
+  html { font-size: 16px; }
+  @media (min-width: 1280px) {
+    html { font-size: clamp(12px, min(0.8333vw, 1.4815vh), 32px); }
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: var(--font-sans);
@@ -119,4 +127,19 @@
     background: hsl(220 14% 22%);
     border-radius: 3px;
   }
+}
+
+/* Labels anchored to parts of the 3D machine view (positioned by machineScene.ts) */
+@layer components {
+  .machine-tag {
+    position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none;
+    font-size: 0.6875rem; line-height: 1; padding: 0.3rem 0.45rem; border-radius: 0.375rem;
+    color: hsl(var(--foreground)); background: hsl(var(--background) / 0.78);
+    border: 1px solid hsl(var(--border)); transition: border-color .2s, color .2s;
+  }
+  .machine-tag[data-level="warn"] { color: hsl(var(--status-warning)); border-color: hsl(var(--status-warning)); }
+  .machine-tag[data-level="crit"] { color: hsl(var(--status-critical)); border-color: hsl(var(--status-critical));
+    box-shadow: 0 0 16px hsl(var(--status-critical) / 0.45); }
+  .machine-tag-axis { font-family: var(--font-mono); font-weight: 600; font-size: 0.75rem; padding: 0.2rem 0.4rem; }
+  .machine-tag-axis[data-level="ok"] { border-color: hsl(var(--border)); }
 }

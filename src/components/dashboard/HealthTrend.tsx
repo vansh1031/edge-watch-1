@@ -79,7 +79,7 @@ const HealthTrend = ({ data }: HealthTrendProps) => {
             <Maximize2 size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
-        {renderChart(180)}
+        <div className="h-[11.25rem]">{renderChart("100%" as `${number}%`)}</div>
       </div>
 
       <Dialog open={fullScreen} onOpenChange={setFullScreen}>

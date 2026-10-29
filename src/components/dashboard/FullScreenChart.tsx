@@ -132,7 +132,7 @@ const FullScreenChart = ({ open, onOpenChange, data, title, lines }: FullScreenC
                 <button
                   key={r.label}
                   onClick={() => { setTimeRange(r.ms); resetZoom(); }}
-                  className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-colors ${
+                  className={`px-2.5 py-1 text-[0.625rem] font-medium rounded-md transition-colors ${
                     timeRange === r.ms
                       ? 'bg-accent text-accent-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -143,7 +143,7 @@ const FullScreenChart = ({ open, onOpenChange, data, title, lines }: FullScreenC
               ))}
             </div>
             {zoomDomain && (
-              <button onClick={resetZoom} className="text-[10px] text-accent hover:underline">
+              <button onClick={resetZoom} className="text-[0.625rem] text-accent hover:underline">
                 Reset Zoom
               </button>
             )}
@@ -181,7 +181,7 @@ const FullScreenChart = ({ open, onOpenChange, data, title, lines }: FullScreenC
               <button
                 key={line.key}
                 onClick={() => toggleLine(line.key)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[0.6875rem] font-medium transition-all ${
                   hidden ? 'opacity-40 line-through' : ''
                 }`}
                 style={{ color: line.color }}
@@ -195,7 +195,7 @@ const FullScreenChart = ({ open, onOpenChange, data, title, lines }: FullScreenC
             );
           })}
           {paused && (
-            <span className="ml-auto text-[10px] text-status-warning font-medium flex items-center gap-1">
+            <span className="ml-auto text-[0.625rem] text-status-warning font-medium flex items-center gap-1">
               <Pause size={10} /> Updates paused
             </span>
           )}

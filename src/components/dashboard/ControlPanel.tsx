@@ -100,12 +100,12 @@ const ControlPanel = ({ control, onChanged }: ControlPanelProps) => {
               <PlayCircle size={16} /> Resume machine
             </button>
             {!control.manual_resume && (
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <p className="text-[0.6875rem] text-muted-foreground flex items-center gap-1">
                 <Lock size={11} /> Manual resume is off — set CONTROL_TOKEN in backend/.env
               </p>
             )}
             {stillCritical && (
-              <p className="text-[11px] status-critical">Machine is still critical — resume is blocked.</p>
+              <p className="text-[0.6875rem] status-critical">Machine is still critical — resume is blocked.</p>
             )}
           </>
         )}
@@ -119,7 +119,7 @@ const ControlPanel = ({ control, onChanged }: ControlPanelProps) => {
         <Power size={16} className="text-accent" />
         <h3 className="text-sm font-semibold text-foreground">Machine Control</h3>
         {control?.auto_resume && (
-          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground uppercase">auto-resume on</span>
+          <span className="ml-auto text-[0.625rem] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground uppercase">auto-resume on</span>
         )}
       </div>
       {body}

@@ -47,10 +47,10 @@ const RecommendationPanel = ({ data }: RecommendationPanelProps) => {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-foreground leading-relaxed">{rec.message}</p>
                     <div className="mt-1.5 flex items-center gap-2">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase ${priorityBadge[rec.priority]}`}>
+                      <span className={`text-[0.625rem] px-1.5 py-0.5 rounded-full font-medium uppercase ${priorityBadge[rec.priority]}`}>
                         {rec.priority}
                       </span>
-                      <span className="text-[10px] text-muted-foreground capitalize">{rec.category}</span>
+                      <span className="text-[0.625rem] text-muted-foreground capitalize">{rec.category}</span>
                     </div>
                   </div>
                 </div>

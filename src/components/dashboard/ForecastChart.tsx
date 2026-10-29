@@ -73,7 +73,7 @@ const ForecastChart = ({ data, title, color, unit }: ForecastChartProps) => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-3 text-[0.625rem] text-muted-foreground">
               <span className="flex items-center gap-1">
                 <span className="w-4 h-0.5 rounded" style={{ background: color }} /> Actual
               </span>
@@ -84,7 +84,7 @@ const ForecastChart = ({ data, title, color, unit }: ForecastChartProps) => {
             <Maximize2 size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
-        {renderChart(220)}
+        <div className="h-[13.75rem]">{renderChart("100%" as `${number}%`)}</div>
       </div>
 
       <Dialog open={fullScreen} onOpenChange={setFullScreen}>

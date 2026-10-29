@@ -7,6 +7,8 @@ interface StatusCardsProps {
   data: LiveData | null;
   anomaly?: Pick<PredictionData, 'health_score' | 'status'> | null;
   isLoading?: boolean;
+  gridClassName?: string;     // e.g. 2 columns when placed beside the 3D view
+  compact?: boolean;          // smaller padding / numbers on wide layouts
 }
 
 function statusColor(status: CardStatus) {
@@ -30,7 +32,7 @@ function statusText(status: CardStatus) {
   return 'No data';
 }
 
-const StatusCards = ({ data, anomaly }: StatusCardsProps) => {
+const StatusCards = ({ data, anomaly, gridClassName = 'grid grid-cols-2 lg:grid-cols-4 gap-4', compact = false }: StatusCardsProps) => {
   // ✅ Health + status come from the ML model (/api/prediction),
   //    sensor levels from the backend thresholds (/api/live-data) — no thresholds here
   const machineStatus: CardStatus = anomaly?.status ?? 'unknown';
@@ -64,14 +66,14 @@ const StatusCards = ({ data, anomaly }: StatusCardsProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className={gridClassName}>
       {cards.map((card) => (
         <div
           key={card.label}
-          className="glow-card rounded-xl bg-card p-5 transition-all duration-300 hover:scale-[1.02]"
+          className={`glow-card rounded-xl bg-card ${compact ? 'p-4' : 'p-5'} transition-all duration-300 hover:scale-[1.02]`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-3">
+          <div className={`flex items-center justify-between ${compact ? 'mb-2' : 'mb-3'}`}>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {card.label}
             </span>
@@ -81,12 +83,12 @@ const StatusCards = ({ data, anomaly }: StatusCardsProps) => {
           </div>
 
           {/* Value */}
-          <div className={`text-3xl font-bold tracking-tight ${statusColor(card.status)}`}>
+          <div className={`${compact ? 'text-2xl' : 'text-3xl'} font-bold tracking-tight ${statusColor(card.status)}`}>
             {card.value}
           </div>
 
           {/* Status text */}
-          <div className="mt-2 flex items-center gap-1.5">
+          <div className={`${compact ? 'mt-1' : 'mt-2'} flex items-center gap-1.5`}>
             <div className={`w-1.5 h-1.5 rounded-full bg-current ${statusColor(card.status)} animate-pulse`} />
             <span className={`text-xs ${statusColor(card.status)}`}>
               {statusText(card.status)}

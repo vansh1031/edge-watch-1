@@ -70,7 +70,7 @@ const History = () => {
     <div className="min-h-screen bg-background">
       <TopBar isConnected={isLive && !loadError} useMock={false} />
 
-      <main className="p-4 lg:p-6 max-w-[1600px] mx-auto space-y-6">
+      <main className="p-4 lg:p-6 max-w-[100rem] mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">
             <span className="text-primary glow-text">History</span>

@@ -105,7 +105,7 @@ const DemoControls = ({ info, tick, onValues, onPreset, onReset }: DemoControlsP
       </p>
 
       <div>
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Simulate a condition</p>
+        <p className="text-[0.6875rem] uppercase tracking-wider text-muted-foreground mb-2">Simulate a condition</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {info.presets.map(p => (
             <button
@@ -121,7 +121,7 @@ const DemoControls = ({ info, tick, onValues, onPreset, onReset }: DemoControlsP
 
       {GROUPS.map(group => (
         <div key={group.title} className="space-y-3">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{group.title}</p>
+          <p className="text-[0.6875rem] uppercase tracking-wider text-muted-foreground">{group.title}</p>
           {group.fields.map(field => {
             const range = info.ranges[field];
             const live = Number(tick?.reading[field] ?? info.history.at(-1)?.[field] ?? range.min);
@@ -133,7 +133,7 @@ const DemoControls = ({ info, tick, onValues, onPreset, onReset }: DemoControlsP
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-foreground">
                     {LABELS[field]}
-                    {held && <span className="ml-1.5 text-[9px] px-1 rounded bg-accent/15 text-accent align-middle">SET</span>}
+                    {held && <span className="ml-1.5 text-[0.5625rem] px-1 rounded bg-accent/15 text-accent align-middle">SET</span>}
                   </span>
                   <span className={`font-mono ${levelClass(info, field, value)}`}>
                     {value.toFixed(range.step < 0.1 ? 2 : 1)} {range.unit}
@@ -150,7 +150,7 @@ const DemoControls = ({ info, tick, onValues, onPreset, onReset }: DemoControlsP
                   className="w-full accent-[hsl(var(--accent))] cursor-pointer"
                 />
                 {t && (
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[0.625rem] text-muted-foreground">
                     warning ≥ {t.warning} · critical ≥ {t.critical} {range.unit}
                   </p>
                 )}

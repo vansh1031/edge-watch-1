@@ -59,7 +59,9 @@ const SensorChart = ({ data = [], title, lines }: SensorChartProps) => {
         </div>
 
         {/* 🔥 Chart */}
-        <ResponsiveContainer width="100%" height={220}>
+        {/* rem height → scales with the screen (see index.css auto-fit) */}
+        <div className="h-[13.75rem]">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 16%)" />
@@ -97,6 +99,7 @@ const SensorChart = ({ data = [], title, lines }: SensorChartProps) => {
 
           </LineChart>
         </ResponsiveContainer>
+        </div>
       </div>
 
       {/* 🔥 Fullscreen */}

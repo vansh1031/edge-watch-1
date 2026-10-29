@@ -4,6 +4,8 @@ import { PredictionData, MachineStatus } from '@/types/sensor';
 interface PredictionCardProps {
   data: PredictionData | null;
   isLoading: boolean;
+  gridClassName?: string;     // e.g. 2 columns when placed beside the 3D view
+  compact?: boolean;          // smaller padding / numbers on wide layouts
 }
 
 function statusColor(status: MachineStatus) {
@@ -46,7 +48,7 @@ const NO_DATA_CARDS = [
   { label: 'AI Confidence',       icon: TrendingUp },
 ].map(c => ({ ...c, value: '--', color: 'text-muted-foreground', bg: 'bg-muted' }));
 
-const PredictionCard = ({ data, isLoading }: PredictionCardProps) => {
+const PredictionCard = ({ data, isLoading, gridClassName = 'grid grid-cols-2 lg:grid-cols-4 gap-4', compact = false }: PredictionCardProps) => {
   // No prediction → show empty cards ("--"), never invented values
   const cards = !data ? NO_DATA_CARDS : [
     {
@@ -80,14 +82,14 @@ const PredictionCard = ({ data, isLoading }: PredictionCardProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className={gridClassName}>
       {cards.map((card) => (
         <div
           key={card.label}
-          className="glow-card rounded-xl bg-card p-5 transition-all duration-300 hover:scale-[1.02] relative overflow-hidden"
+          className={`glow-card rounded-xl bg-card ${compact ? 'p-4' : 'p-5'} transition-all duration-300 hover:scale-[1.02] relative overflow-hidden`}
         >
           <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl opacity-20 -translate-y-1/2 translate-x-1/2 bg-accent" />
-          <div className="flex items-center justify-between mb-3">
+          <div className={`flex items-center justify-between ${compact ? 'mb-2' : 'mb-3'}`}>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{card.label}</span>
             <div className={`p-1.5 rounded-lg ${card.bg}`}>
               <card.icon size={14} className={card.color} />
@@ -96,7 +98,7 @@ const PredictionCard = ({ data, isLoading }: PredictionCardProps) => {
           {isLoading ? (
             <Skeleton />
           ) : (
-            <div className={`text-3xl font-bold tracking-tight ${card.color} transition-colors duration-500`}>
+            <div className={`${compact ? 'text-2xl' : 'text-3xl'} font-bold tracking-tight ${card.color} transition-colors duration-500`}>
               {card.value}
             </div>
           )}

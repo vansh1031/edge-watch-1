@@ -124,6 +124,25 @@ machine with its own copy of the AI's memory:
 
 Pick **Normal mode** to return to the live dashboard.
 
+🏭 3D machine view
+
+Both pages show a rotatable 3D twin of the machine (motor → coupling → bearing with the
+sensor → fan rotor). Drag to rotate, scroll to zoom, **Reset view** to go back.
+
+- Velocity X / Y / Z: the machine shakes along that axis and the sensor arrows grow
+  (assumed mounting: X sideways, Y up–down, Z along the shaft — confirm for your sensor).
+- Acceleration: the bearing buzzes, glows and sparks. Temperature: heat fills the motor from
+  the bottom (orange at warning, red at critical) with steam. Acoustic: sound rings.
+- The part named by the AI fault is highlighted (bearing, coupling, rotor, motor).
+- three.js is bundled (works offline). Rendering pauses when the view is off screen. Computers
+  without WebGL show a short message instead; the rest of the dashboard is unaffected.
+
+🖥️ Screen sizes
+
+On screens 1280 px wide and larger the whole interface scales with the window (1280×720 up to
+4K) — no browser zoom needed. The Demo page always fits one screen: controls and results scroll
+on their own, the 3D machine stays visible. Phones and tablets get a stacked layout.
+
 🧠 How faults are detected
 
 - `random_forest.pkl` → severity (normal / warning / fault); `fault_type_classifier.pkl` →

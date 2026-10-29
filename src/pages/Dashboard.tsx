@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import TopBar from '@/components/dashboard/TopBar';
 import StatusCards from '@/components/dashboard/StatusCards';
 import SensorChart from '@/components/dashboard/SensorChart';
@@ -13,6 +13,8 @@ import HealthTrend from '@/components/dashboard/HealthTrend';
 import FaultDetection from '@/components/dashboard/FaultDetection';
 import RecommendationPanel from '@/components/dashboard/RecommendationPanel';
 import ControlPanel from '@/components/dashboard/ControlPanel';
+// three.js is large → loaded after the rest of the dashboard
+const MachineView = lazy(() => import('@/components/machine/MachineView'));
 import DataStatusBanner from '@/components/dashboard/DataStatusBanner';
 import { velocityLines, accelLines, tempLines, acousticLines } from '@/components/dashboard/chartLines';
 import { API_BASE } from '@/services/api';
@@ -100,7 +102,7 @@ const Dashboard = () => {
 
       <TopBar isConnected={liveState !== 'offline'} useMock={Boolean(data?.simulated)} />
 
-      <main className="p-4 lg:p-6 space-y-6 max-w-[1600px] mx-auto">
+      <main className="p-4 lg:p-6 space-y-6 max-w-[117.5rem] mx-auto">
 
         <DataStatusBanner liveState={liveState} data={data} />
 
@@ -132,15 +134,28 @@ const Dashboard = () => {
           </span>
         </div>
 
-        {/* ── Status Cards ── */}
-        <StatusCards data={data} anomaly={prediction} isLoading={isLoading} />
+        {/* ── 8 cards (left) + 3D machine (right) ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+          <div className="flex flex-col gap-4">
+            <StatusCards data={data} anomaly={prediction} isLoading={isLoading} gridClassName="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-2 gap-4" compact />
+            <PredictionCard data={prediction} isLoading={isLoading} gridClassName="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-2 gap-4" compact />
+          </div>
+          <Suspense fallback={<div className="glow-card rounded-xl bg-card min-h-[26rem]" />}>
+            <MachineView
+              reading={data}
+              status={prediction?.status ?? null}
+              faultType={prediction?.fault_type ?? null}
+              motorOff={Boolean(prediction?.motor_off)}
+              limits={thresholds as Record<string, { warning: number; critical: number }>}
+              className="min-h-[26rem] h-full"
+            />
+          </Suspense>
+        </div>
 
-        {/* ── Prediction ── */}
-        <div>
-          <h2 className="text-sm font-semibold text-accent uppercase mb-3">
-            AI Predictive Maintenance
-          </h2>
-          <PredictionCard data={prediction} isLoading={isLoading} />
+        {/* ── Fault detection | Machine control ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <FaultDetection data={prediction} />
+          <ControlPanel control={control} onChanged={setControl} />
         </div>
 
         {/* ── Forecast + Health Trend ── */}
@@ -165,13 +180,6 @@ const Dashboard = () => {
 
         </div>
 
-        {/* ── Fault + Recommendations + Machine Control ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <FaultDetection data={prediction} />
-          <RecommendationPanel data={recommendations} />
-          <ControlPanel control={control} onChanged={setControl} />
-        </div>
-
         {/* ── Live Charts ── */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
@@ -188,7 +196,8 @@ const Dashboard = () => {
             <LiveDataTable data={history} thresholds={thresholds} />
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 lg:self-start space-y-6">
+            <RecommendationPanel data={recommendations} />
             <AlertPanel alerts={alerts} onAcknowledged={updateAlert} />
           </div>
 
