@@ -39,7 +39,7 @@ const DataStatusBanner = ({ liveState, data }: DataStatusBannerProps) => {
   } else if (data?.simulated) {
     tone = 'warning';
     Icon = FlaskConical;
-    title = 'Demo mode — simulated data';
+    title = 'Simulated data — no sensor connected';
     detail = 'Readings come from the built-in synthetic sensor. They do not describe a real machine and never trigger STOP/RUN.';
   } else {
     return null;

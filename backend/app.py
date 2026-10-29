@@ -37,6 +37,7 @@ from collections import deque
 from synthetic import SyntheticSensor
 from control import ShutdownController
 from db import Store
+from demo import DemoSession, DemoRegistry, session_info
 
 
 # ─── .env loader ──────────────────────────────────────────────
@@ -488,6 +489,8 @@ def prediction_payload() -> dict:
         "health_score": result["health_score"],
         "motor_off":    result.get("motor_off", False),
         "trend":        result.get("trend", 0.0),
+        "fault_source": result.get("fault_source"),
+        "severity":     result.get("severity"),
         **data_freshness(),
     }
 
@@ -710,36 +713,43 @@ def get_forecast():
     })
 
 
-@app.route("/api/recommendations")
-def get_recommendations():
-    """Dynamic recommendations based on ML status + fault type."""
-    fault  = latest_pred.get("fault_type", "none")  if latest_pred else "none"
-    conf   = latest_pred.get("confidence", 0)       if latest_pred else 0
-    status = latest_pred.get("status", "normal")    if latest_pred else "normal"
+def recommendations_for(pred: dict) -> list:
+    """Recommendations for a prediction (live machine or demo session)."""
+    fault  = pred.get("fault_type", "none") if pred else "none"
+    conf   = pred.get("confidence", 0)      if pred else 0
+    status = pred.get("status", "normal")   if pred else "normal"
+    source = "Rule" if pred and pred.get("fault_source") == "rule" else "ML"
 
-    if latest_pred.get("motor_off"):
+    if pred and pred.get("motor_off"):
         recs = [RECOMMENDATIONS_NORMAL[0], {"id": "off1", "message": "Motor stopped — good window for inspection and lubrication", "priority": "low", "category": "maintenance"}]
     elif status == "normal":
         recs = list(RECOMMENDATIONS_NORMAL)
-    elif status == "warning":
-        recs = [RECOMMENDATIONS[1], RECOMMENDATIONS[2], RECOMMENDATIONS[0]]
     else:
-        recs = list(RECOMMENDATIONS)
+        # Generic advice; bearing / lubrication items only where they fit the fault
+        recs = [RECOMMENDATIONS[1], RECOMMENDATIONS[2]]
+        if fault == "bearing fault" or (status == "critical" and fault == "none"):
+            recs.append(RECOMMENDATIONS[0])
+        if fault in ("bearing fault", "overheating"):
+            recs.append(RECOMMENDATIONS[3])
 
-    ml_rec = None
-    if fault == "bearing fault":
-        ml_rec = {"id": "ml1", "message": f"ML: Bearing fault detected ({conf*100:.0f}% confidence) — inspect immediately", "priority": "high",   "category": "maintenance"}
-    elif fault == "misalignment":
-        ml_rec = {"id": "ml1", "message": f"ML: Shaft misalignment ({conf*100:.0f}% confidence) — check coupling",          "priority": "high",   "category": "maintenance"}
-    elif fault == "imbalance":
-        ml_rec = {"id": "ml1", "message": f"ML: Rotor imbalance ({conf*100:.0f}% confidence) — schedule balancing",          "priority": "medium", "category": "maintenance"}
-    elif fault == "overheating":
-        ml_rec = {"id": "ml1", "message": f"ML: Overheating ({conf*100:.0f}% confidence) — check cooling system",            "priority": "high",   "category": "risk"}
+    fault_msgs = {
+        "bearing fault": ("Bearing fault detected ({c}% confidence) — inspect immediately", "high",   "maintenance"),
+        "misalignment":  ("Shaft misalignment ({c}% confidence) — check coupling",          "high",   "maintenance"),
+        "imbalance":     ("Rotor imbalance ({c}% confidence) — schedule balancing",          "medium", "maintenance"),
+        "overheating":   ("Overheating — check cooling system and load",                     "high",   "risk"),
+        "high vibration": ("Vibration above ISO 10816 limit — check mounting, looseness and load", "high", "risk"),
+    }
+    if fault in fault_msgs:
+        msg, prio, cat = fault_msgs[fault]
+        recs.insert(0, {"id": "ml1", "message": f"{source}: " + msg.format(c=f"{conf*100:.0f}"),
+                        "priority": prio, "category": cat})
+    return recs
 
-    if ml_rec:
-        recs.insert(0, ml_rec)
 
-    return jsonify(recs)
+@app.route("/api/recommendations")
+def get_recommendations():
+    """Dynamic recommendations based on ML status + fault type."""
+    return jsonify(recommendations_for(latest_pred))
 
 
 @app.route("/api/model-status")
@@ -827,6 +837,85 @@ def simulation_status():
         "interval_s":   SIM_INTERVAL,
         "idle_timeout": SIM_IDLE_TIMEOUT,
     })
+
+
+# ─── Demo mode (what-if simulation) ──────────────────────────
+# Each Demo page has its own session (own model memory). Nothing is stored,
+# published on MQTT or sent to the live dashboard.
+demo_sessions = DemoRegistry()
+
+
+@app.route("/api/demo/stream")
+def demo_stream():
+    """
+    Opens a demo session for this page. Events:
+      session → {id, ranges, thresholds, presets, history}
+      tick    → every second: reading, prediction, alerts, recommendations, control, demo
+    The session ends when the page closes the connection.
+    """
+    session = DemoSession(recommendations_for)
+    demo_sessions.add(session)
+
+    def gen():
+        try:
+            info = {**session_info(), "id": session.id, "history": session.warmup_history()}
+            yield "retry: 3000\n\n"
+            yield f"event: session\ndata: {json.dumps(info)}\n\n"
+            next_tick = time.time()
+            while True:
+                yield f"event: tick\ndata: {json.dumps(session.tick())}\n\n"
+                next_tick += session.interval_s
+                time.sleep(max(0.0, next_tick - time.time()))
+        finally:
+            demo_sessions.remove(session.id)
+
+    return Response(stream_with_context(gen()), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+def _demo_session(sid):
+    session = demo_sessions.get(sid)
+    if session is None:
+        return None, (jsonify({"error": "Demo session not found — reload the Demo page"}), 404)
+    return session, None
+
+
+@app.route("/api/demo/<sid>/input", methods=["POST"])
+def demo_input(sid):
+    """Body: {"values": {"temperature": 60, ...}} or {"preset": "bearing"}"""
+    session, err = _demo_session(sid)
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    if "preset" in body:
+        if not session.set_preset(str(body["preset"])):
+            return jsonify({"error": "Unknown preset"}), 400
+    elif isinstance(body.get("values"), dict):
+        try:
+            session.set_values(body["values"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "Values must be numbers"}), 400
+    else:
+        return jsonify({"error": "Send values or preset"}), 400
+    return jsonify({"ok": True})
+
+
+@app.route("/api/demo/<sid>/reset", methods=["POST"])
+def demo_reset(sid):
+    session, err = _demo_session(sid)
+    if err:
+        return err
+    session.reset()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/demo/<sid>/resume", methods=["POST"])
+def demo_resume(sid):
+    session, err = _demo_session(sid)
+    if err:
+        return err
+    session.resume()
+    return jsonify({"ok": True})
 
 
 # ─── MQTT Client ──────────────────────────────────────────────

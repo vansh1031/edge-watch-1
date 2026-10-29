@@ -21,32 +21,39 @@ import math
 import random
 import time
 
+# Fault profiles = medians of each class in sensor_data_labeled.csv, so the
+# simulator, the demo presets and the trained models agree on the fault name.
 PROFILES = {
-    "normal":       {"aRMSx": 0.055, "aRMSy": 0.107, "aRMSz": 0.052, "vRMSx": 0.56, "vRMSy": 1.13, "vRMSz": 0.57, "temperature": 27.3, "aucausticRMS": 49,  "extra": 52},
-    "bearing":      {"aRMSx": 0.95,  "aRMSy": 0.60,  "aRMSz": 1.00,  "vRMSx": 2.0,  "vRMSy": 1.9,  "vRMSz": 2.7,  "temperature": 31,   "aucausticRMS": 150, "extra": 163},
-    "misalignment": {"aRMSx": 0.72,  "aRMSy": 0.50,  "aRMSz": 0.81,  "vRMSx": 2.2,  "vRMSy": 3.7,  "vRMSz": 5.1,  "temperature": 31.3, "aucausticRMS": 143, "extra": 150},
-    "imbalance":    {"aRMSx": 0.30,  "aRMSy": 0.35,  "aRMSz": 0.25,  "vRMSx": 3.2,  "vRMSy": 4.8,  "vRMSz": 1.4,  "temperature": 29,   "aucausticRMS": 70,  "extra": 90},
-    "overheating":  {"aRMSx": 0.08,  "aRMSy": 0.13,  "aRMSz": 0.07,  "vRMSx": 0.7,  "vRMSy": 1.3,  "vRMSz": 0.7,  "temperature": 72,   "aucausticRMS": 55,  "extra": 60},
-    "off":          {"aRMSx": 0.01,  "aRMSy": 0.01,  "aRMSz": 0.01,  "vRMSx": 0.02, "vRMSy": 0.02, "vRMSz": 0.02, "temperature": 25,   "aucausticRMS": 34,  "extra": 44},
+    "normal":       {"aRMSx": 0.055, "aRMSy": 0.107, "aRMSz": 0.052, "vRMSx": 0.56,  "vRMSy": 1.13,  "vRMSz": 0.56, "temperature": 27.2, "aucausticRMS": 49,  "extra": 52},
+    "bearing":      {"aRMSx": 0.63,  "aRMSy": 0.356, "aRMSz": 0.586, "vRMSx": 2.03,  "vRMSy": 1.72,  "vRMSz": 2.61, "temperature": 29.7, "aucausticRMS": 147, "extra": 150},
+    "misalignment": {"aRMSx": 0.985, "aRMSy": 0.964, "aRMSz": 0.921, "vRMSx": 6.5,   "vRMSy": 8.67,  "vRMSz": 5.22, "temperature": 30.4, "aucausticRMS": 148, "extra": 150},
+    "imbalance":    {"aRMSx": 0.732, "aRMSy": 0.475, "aRMSz": 0.793, "vRMSx": 2.01,  "vRMSy": 3.23,  "vRMSz": 4.87, "temperature": 31.0, "aucausticRMS": 144, "extra": 150},
+    "overheating":  {"aRMSx": 0.06,  "aRMSy": 0.11,  "aRMSz": 0.055, "vRMSx": 0.6,   "vRMSy": 1.2,   "vRMSz": 0.6,  "temperature": 75,   "aucausticRMS": 52,  "extra": 55},
+    "off":          {"aRMSx": 0.01,  "aRMSy": 0.01,  "aRMSz": 0.01,  "vRMSx": 0.02,  "vRMSy": 0.02,  "vRMSz": 0.02, "temperature": 25,   "aucausticRMS": 34,  "extra": 44},
 }
-
 VIB_KEYS = ["aRMSx", "aRMSy", "aRMSz", "vRMSx", "vRMSy", "vRMSz"]
 ALL_KEYS = VIB_KEYS + ["temperature", "aucausticRMS", "extra"]
 
 # (label, steps, start_weights, end_weights)
 # Weights blend fault profiles on top of "normal": base = normal + Σ w·(fault − normal)
-# The trained model is very sensitive, so small weights already show up as
-# warning (≈0.05–0.15) and critical (≥0.2).
+# The models only name a fault near full strength (in between they say
+# "bearing fault", like the labelling rules' default), so each fault rises
+# slowly to a warning, then steps quickly to the full fault and holds.
 SCENARIO = [
-    ("Normal operation",       150, {},                                    {}),
-    ("Imbalance developing",   120, {},                                    {"imbalance": 0.12}),
-    ("Misalignment fault",      45, {"imbalance": 0.12},                   {"imbalance": 0.12, "misalignment": 0.5}),
-    ("Misalignment fault",      30, {"imbalance": 0.12, "misalignment": 0.5}, {"imbalance": 0.12, "misalignment": 0.5}),
-    ("Maintenance stop",        30, {"off": 1.0},                          {"off": 1.0}),
-    ("Normal operation",       150, {},                                    {}),
-    ("Overheating drift",       90, {},                                    {"overheating": 0.3}),
-    ("Overheating drift",       30, {"overheating": 0.3},                  {"overheating": 0.3}),
-    ("Cooling down",            60, {"overheating": 0.3},                  {}),
+    ("Normal operation",         150, {},                       {}),
+    ("Vibration rising",          60, {},                       {"imbalance": 0.15}),
+    ("Imbalance fault",           15, {"imbalance": 0.15},      {"imbalance": 1.0}),
+    ("Imbalance fault",           30, {"imbalance": 1.0},       {"imbalance": 1.0}),
+    ("Maintenance stop",          30, {"off": 1.0},             {"off": 1.0}),
+    ("Normal operation",         120, {},                       {}),
+    ("Vibration rising",          60, {},                       {"misalignment": 0.05}),
+    ("Misalignment fault",        15, {"misalignment": 0.05},   {"misalignment": 1.0}),
+    ("Misalignment fault",        30, {"misalignment": 1.0},    {"misalignment": 1.0}),
+    ("Maintenance stop",          30, {"off": 1.0},             {"off": 1.0}),
+    ("Normal operation",         120, {},                       {}),
+    ("Overheating drift",         90, {},                       {"overheating": 0.5}),
+    ("Overheating drift",         30, {"overheating": 0.5},     {"overheating": 0.5}),
+    ("Cooling down",              60, {"overheating": 0.5},     {}),
 ]
 SCENARIO_STEPS = sum(p[1] for p in SCENARIO)
 

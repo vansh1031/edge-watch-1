@@ -14,27 +14,10 @@ import FaultDetection from '@/components/dashboard/FaultDetection';
 import RecommendationPanel from '@/components/dashboard/RecommendationPanel';
 import ControlPanel from '@/components/dashboard/ControlPanel';
 import DataStatusBanner from '@/components/dashboard/DataStatusBanner';
+import { velocityLines, accelLines, tempLines, acousticLines } from '@/components/dashboard/chartLines';
 import { API_BASE } from '@/services/api';
 import { ForecastPoint, SensorData } from '@/types/sensor';
 
-// ─── Chart line configs ────────────────────────────────────────
-const velocityLines = [
-  { key: 'vRMSx' as const, color: '#3b82f6', label: 'vRMS-X' },
-  { key: 'vRMSy' as const, color: '#22d3ee', label: 'vRMS-Y' },
-  { key: 'vRMSz' as const, color: '#a78bfa', label: 'vRMS-Z' },
-];
-const accelLines = [
-  { key: 'aRMSx' as const, color: '#f59e0b', label: 'aRMS-X' },
-  { key: 'aRMSy' as const, color: '#ef4444', label: 'aRMS-Y' },
-  { key: 'aRMSz' as const, color: '#10b981', label: 'aRMS-Z' },
-];
-const tempLines = [
-  { key: 'temperature' as const, color: '#f97316', label: 'Temperature' },
-];
-const acousticLines = [
-  { key: 'aucausticRMS' as const, color: '#8b5cf6', label: 'Acoustic RMS' },
-];
-// ──────────────────────────────────────────────────────────────
 
 const RANGE_LIMITS: Record<string, number> = {
   "1m": 60,

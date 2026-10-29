@@ -1,4 +1,4 @@
-import { SensorData, ForecastData, Alert, RawAlert, Recommendation, ControlStatus, Thresholds } from '@/types/sensor';
+import { SensorData, ForecastData, Alert, RawAlert, Recommendation, ControlStatus, Thresholds, SensorField } from '@/types/sensor';
 
 // Backend runs on port 5005 of the same machine that serves the dashboard,
 // so this works both on the Jetson itself and from other PCs on the network.
@@ -119,3 +119,23 @@ export async function resumeMachine(token: string, operator: string): Promise<Co
   if (!res.ok) throw new ApiError(body.error ?? `Resume failed (HTTP ${res.status})`, res.status);
   return body.control;
 }
+
+// ─── Demo mode ────────────────────────────────────────────────
+export const DEMO_STREAM_URL = `${API_BASE}/api/demo/stream`;
+
+async function demoPost(path: string, body?: object) {
+  const res = await fetchWithTimeout(`${API_BASE}/api/demo/${path}`, 5000, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new ApiError(err.error ?? `Demo request failed (HTTP ${res.status})`, res.status);
+  }
+}
+
+export const demoSetValues = (sid: string, values: Partial<Record<SensorField, number>>) => demoPost(`${sid}/input`, { values });
+export const demoSetPreset = (sid: string, preset: string) => demoPost(`${sid}/input`, { preset });
+export const demoReset     = (sid: string) => demoPost(`${sid}/reset`);
+export const demoResume    = (sid: string) => demoPost(`${sid}/resume`);

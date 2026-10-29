@@ -8,6 +8,7 @@ import { readOperator, saveOperator } from '@/lib/operator';
 interface AlertPanelProps {
   alerts: Alert[];
   onAcknowledged?: (alert: Alert) => void;
+  readOnly?: boolean;      // demo alerts: shown, not stored, nothing to acknowledge
 }
 
 const severityConfig = {
@@ -18,11 +19,11 @@ const severityConfig = {
 
 const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour12: false });
 
-const AlertPanel = ({ alerts, onAcknowledged }: AlertPanelProps) => {
+const AlertPanel = ({ alerts, onAcknowledged, readOnly = false }: AlertPanelProps) => {
   const [openOnly, setOpenOnly] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const needsAck = (a: Alert) => a.severity !== 'normal' && !a.acknowledged;
+  const needsAck = (a: Alert) => !readOnly && a.severity !== 'normal' && !a.acknowledged;
   const openCount = alerts.filter(needsAck).length;
   const shown = openOnly ? alerts.filter(needsAck) : alerts;
 
@@ -53,10 +54,12 @@ const AlertPanel = ({ alerts, onAcknowledged }: AlertPanelProps) => {
             {openCount} open
           </span>
         )}
-        <label className="ml-auto flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
-          <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} />
-          Open only
-        </label>
+        {!readOnly && (
+          <label className="ml-auto flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+            <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} />
+            Open only
+          </label>
+        )}
       </div>
       <div className="space-y-3 max-h-[500px] overflow-y-auto scrollbar-thin pr-1">
         {shown.length === 0 ? (
@@ -79,7 +82,7 @@ const AlertPanel = ({ alerts, onAcknowledged }: AlertPanelProps) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-foreground leading-relaxed">
-                    {alert.simulated && (
+                    {alert.simulated && !readOnly && (
                       <span className="mr-1.5 text-[9px] px-1 py-0.5 rounded bg-status-warning/15 status-warning font-semibold align-middle">DEMO</span>
                     )}
                     {alert.message}

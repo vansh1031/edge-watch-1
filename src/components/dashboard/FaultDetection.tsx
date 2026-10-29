@@ -10,6 +10,7 @@ const faultLabels: Record<string, { label: string; icon: string }> = {
   'misalignment': { label: 'Misalignment', icon: '↔️' },
   'imbalance': { label: 'Imbalance', icon: '⚖️' },
   'overheating': { label: 'Overheating', icon: '🌡️' },
+  'high vibration': { label: 'High Vibration', icon: '〰️' },
   'none': { label: 'No Fault Detected', icon: ' ' },
 };
 
@@ -47,7 +48,11 @@ const FaultDetection = ({ data }: FaultDetectionProps) => {
               {fault.label}
             </p>
             <p className="text-xs text-muted-foreground">
-              {hasFault ? 'Fault detected by AI model' : 'System operating normally'}
+              {!hasFault
+                ? 'System operating normally'
+                : data.fault_source === 'rule'
+                  ? 'Detected by threshold rule (no training data for this fault yet)'
+                  : 'Fault detected by AI model'}
             </p>
           </div>
         </div>
@@ -74,6 +79,7 @@ const FaultDetection = ({ data }: FaultDetectionProps) => {
             {data.fault_type === 'misalignment' && 'Shaft misalignment indicators detected. Check coupling.'}
             {data.fault_type === 'imbalance' && 'Rotational imbalance detected. Balance check recommended.'}
             {data.fault_type === 'overheating' && 'Temperature above normal range. Check cooling and lubrication.'}
+            {data.fault_type === 'high vibration' && 'Vibration above the ISO 10816 limit for several readings. Check mounting, looseness and load.'}
           </p>
         </div>
       )}

@@ -89,7 +89,7 @@ export interface AnomalyResponse {
 }
 
 // ─── Fault Types ──────────────────────────────────────────────
-export type FaultType = 'bearing fault' | 'misalignment' | 'imbalance' | 'overheating' | 'none';
+export type FaultType = 'bearing fault' | 'misalignment' | 'imbalance' | 'overheating' | 'high vibration' | 'none';
 
 // ─── Prediction (FINAL FIXED) ─────────────────────────────────
 export interface PredictionData extends Partial<DataFreshness> {
@@ -102,6 +102,8 @@ export interface PredictionData extends Partial<DataFreshness> {
   // ✅ MAIN FIELD (important)
   health_score: number;   // 0–100
   motor_off?: boolean;
+  fault_source?: 'ml' | 'rule' | null;   // rule = threshold rule, not the trained model
+  severity?: 'normal' | 'warning' | 'fault';
 }
 
 // ─── Forecast ─────────────────────────────────────────────────
@@ -123,4 +125,33 @@ export interface Recommendation {
   message:  string;
   priority: 'high' | 'medium' | 'low';
   category: 'maintenance' | 'risk' | 'optimization';
+}
+// ─── Demo mode (/api/demo/stream) ─────────────────────────────
+export type SensorField = 'aRMSx' | 'aRMSy' | 'aRMSz' | 'vRMSx' | 'vRMSy' | 'vRMSz' | 'temperature' | 'aucausticRMS';
+
+export interface DemoSessionInfo {
+  id:         string;
+  fields:     SensorField[];
+  ranges:     Record<SensorField, { min: number; max: number; step: number; unit: string }>;
+  thresholds: Thresholds;
+  presets:    { id: string; label: string; values: Record<SensorField, number> }[];
+  hold_s:     number;
+  glide_s:    number;
+  history:    SensorData[];
+}
+
+export interface DemoTick {
+  reading:         LiveData;
+  prediction:      PredictionData;
+  alerts:          RawAlert[];
+  recommendations: Recommendation[];
+  control:         Omit<ControlStatus, 'manual_resume' | 'mqtt_connected'> & {
+    would_send: { command: 'STOP' | 'RUN'; reason: string; timestamp: number }[];
+  };
+  demo: {
+    override:  number;     // 1 = your values, 0 = simulated data
+    hold_left: number;     // seconds before values start returning
+    returning: boolean;
+    targets:   Partial<Record<SensorField, number>>;
+  };
 }

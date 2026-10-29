@@ -109,6 +109,30 @@ reach ports 5005 / 8080.
 
 Every push is tested on Windows, Linux x64 and Linux ARM64 (Jetson) — see `.github/workflows/ci.yml`.
 
+🎛️ Demo mode (for presentations)
+
+Pick **Demo mode** in the *Mode* dropdown at the top. The Demo page runs its own simulated
+machine with its own copy of the AI's memory:
+
+- **Simulate a condition**: Healthy, Bearing fault, Misalignment, Imbalance, Overheating, Motor off.
+- **Sliders** for every sensor value — health score, status, fault type, remaining life,
+  alerts and recommendations react within a second.
+- Your values are held for 10 s after the last change, then glide back to the simulated
+  data over 8 s. **Reset** returns immediately.
+- Nothing in Demo mode is stored, sent to a machine (STOP/RUN only shown as "would send")
+  or visible in Normal mode. Each browser tab gets its own independent demo.
+
+Pick **Normal mode** to return to the live dashboard.
+
+🧠 How faults are detected
+
+- `random_forest.pkl` → severity (normal / warning / fault); `fault_type_classifier.pkl` →
+  fault type (bearing fault, misalignment, imbalance).
+- Rules where the models have no training data, shown as "rule-based": **overheating**
+  (≥ 45 °C warning, ≥ 70 °C critical) and **high vibration** (any vibration axis past its
+  ISO 10816 critical limit for 3 readings in a row).
+- Physically impossible values (e.g. 19 020 mm/s) are ignored as sensor glitches.
+
 🔌 MQTT & Safety Configuration
 
 All settings come from environment variables or `backend/.env`:

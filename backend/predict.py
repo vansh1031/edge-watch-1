@@ -51,6 +51,10 @@ FAULT_NAMES = {
     4: "overheating",
 }
 
+# random_forest.pkl predicts SEVERITY (train_model.py: Normal / Warning / Fault),
+# fault_type_classifier.pkl predicts the fault TYPE (codes in FAULT_NAMES).
+SEVERITY_NAMES = {0: "normal", 1: "warning", 2: "fault"}
+
 # ─── Industrial Thresholds ────────────────────────────────────
 # Based on ISO 10816 + domain knowledge for your sensor range
 THRESHOLDS = {
@@ -67,6 +71,21 @@ THRESHOLDS = {
 
 # Motor OFF detection — all vibration near zero
 MOTOR_OFF_THRESHOLD = 0.05   # g / mm/s — below this = motor likely OFF
+
+# Physically impossible values = sensor glitch (the real data has e.g. 19 020 mm/s).
+# Such a reading is ignored instead of driving the model or a STOP.
+PLAUSIBLE_MAX = {
+    "vRMSx": 100, "vRMSy": 100, "vRMSz": 100,     # mm/s
+    "aRMSx": 50,  "aRMSy": 50,  "aRMSz": 50,      # g
+    "temperature": 150,                            # °C
+    "aucausticRMS": 250,                           # dB
+}
+
+# The models never saw a single axis far past its limit and call it normal.
+# Vibration past the critical threshold this many readings in a row → critical
+# (one-off spikes don't stop the machine).
+VIBRATION_FIELDS  = ["vRMSx", "vRMSy", "vRMSz", "aRMSx", "aRMSy", "aRMSz"]
+CRIT_PERSIST      = 3
 
 # EMA smoothing factor (0 = no smoothing, 1 = full smoothing)
 # 0.7 means 70% previous + 30% new — very stable
@@ -94,9 +113,14 @@ try:
     _rf        = _load("random_forest.pkl")
     _rul       = _load("rul_params.pkl")
     _fault_map = _load("fault_map.pkl")
+    try:
+        _ft = _load("fault_type_classifier.pkl")
+    except Exception as e:
+        _ft = None
+        print(f"[ML] ⚠️  Fault type classifier not loaded ({e}) — fault type from rules")
     # Trained with n_jobs=-1. For one reading at a time that only adds
     # thread start-up cost (~3x slower). Predict single-threaded.
-    for _m in (_iso, _rf):
+    for _m in (_iso, _rf, _ft):
         if hasattr(_m, "n_jobs"):
             _m.n_jobs = 1
     MODELS_LOADED = True
@@ -122,6 +146,11 @@ class SensorBuffer:
         self._ema_health     = None   # EMA of health score
         self._last_rul       = None   # last reported RUL (for decrease-only)
         self._motor_off_count= 0      # consecutive motor-off readings
+        self._vib_crit_streak= 0      # consecutive readings with vibration past critical
+
+    def track_vibration_critical(self, is_critical: bool) -> int:
+        self._vib_crit_streak = self._vib_crit_streak + 1 if is_critical else 0
+        return self._vib_crit_streak
 
     def push(self, data: dict):
         """Add new sensor reading to buffer."""
@@ -300,7 +329,7 @@ def _estimate_rul_raw(health_score: float) -> int:
 
 # ─── Main Predict ─────────────────────────────────────────────
 
-def predict(data: dict) -> dict:
+def predict(data: dict, buffer: "SensorBuffer | None" = None) -> dict:
     """
     Full ML prediction pipeline WITH temporal context.
 
@@ -323,11 +352,18 @@ def predict(data: dict) -> dict:
     """
 
     # ── 0. Push to temporal buffer ─────────────────────────────
-    _buffer.push(data)
-    is_motor_off = _buffer.is_motor_off()
+    # Demo sessions pass their own buffer so they never disturb the live one
+    buf = buffer if buffer is not None else _buffer
+
+    glitches = [f for f, mx in PLAUSIBLE_MAX.items() if not 0 <= _num(data, f) <= mx]
+    if glitches:
+        return _glitch_result(data, glitches, buf)
+
+    buf.push(data)
+    is_motor_off = buf.is_motor_off()
 
     if not MODELS_LOADED:
-        return _fallback_predict(data, is_motor_off)
+        return _fallback_predict(data, is_motor_off, buf)
 
     try:
         X_raw    = extract_features(data)
@@ -340,11 +376,41 @@ def predict(data: dict) -> dict:
         # Normalize: more negative iso_score = more anomalous
         anomaly_severity = float(np.clip(((-iso_score) + 0.2) / 0.4, 0, 1) * 100)
 
-        # ── 2. Random Forest ───────────────────────────────────
+        # ── 2. Random Forest → severity (0 normal, 1 warning, 2 fault) ──
         rf_probs      = _rf.predict_proba(X_scaled)[0]
-        rf_label_int  = int(_rf.predict(X_scaled)[0])
+        severity      = int(_rf.predict(X_scaled)[0])
         rf_confidence = float(rf_probs.max())
-        fault_type    = FAULT_NAMES.get(rf_label_int, "none")
+
+        # ── 2b. Fault type: only when the severity model sees a problem ──
+        fault_type, fault_source, fault_conf = "none", None, rf_confidence
+        if severity > 0:
+            if _ft is not None:
+                ft_probs     = _ft.predict_proba(X_scaled)[0]
+                fault_type   = FAULT_NAMES.get(int(_ft.classes_[ft_probs.argmax()]), "none")
+                fault_conf   = float(ft_probs.max())
+                fault_source = "ml"
+            else:
+                fault_type, fault_source = _rule_fault_type(data), "rule"
+
+        # Overheating: in the labelling rules but never in the training data,
+        # so no model can output it → threshold rule, marked as rule-based.
+        temp_warn, temp_crit = THRESHOLDS["temperature"]
+        temperature = float(data.get("temperature", 0) or 0)
+        if temperature >= temp_warn and not is_motor_off:
+            fault_type, fault_source, fault_conf = "overheating", "rule", 1.0
+            severity = max(severity, 2 if temperature >= temp_crit else 1)
+
+        # Sustained vibration past ISO 10816 critical → critical even if the model says normal
+        vib_critical = any(_num(data, f) >= THRESHOLDS[f][1] for f in VIBRATION_FIELDS)
+        streak = buf.track_vibration_critical(vib_critical and not is_motor_off)
+        if streak >= CRIT_PERSIST and severity < 2:
+            severity = 2
+            if fault_type == "none":
+                fault_type, fault_source, fault_conf = "high vibration", "rule", 1.0
+
+        # Any sensor past its warning threshold → at least "warning" (no STOP)
+        threshold_warning = not is_motor_off and any(
+            _num(data, f) >= warn for f, (warn, _crit) in THRESHOLDS.items())
 
         # ── 3. Raw health score ────────────────────────────────
         # prob_normal = rf_probs[0] (index 0 = label "none")
@@ -358,15 +424,20 @@ def predict(data: dict) -> dict:
             5, 100
         ))
 
+        # Rule-based faults (overheating, high vibration): the models don't see
+        # them, so cap health to match the status
+        if fault_source == "rule" and fault_type != "none":
+            raw_health = min(raw_health, 40.0 if severity == 2 else 70.0)
+
         # Motor OFF → health stays high (not a failure condition)
         if is_motor_off:
             raw_health = max(raw_health, 80.0)
 
         # ── 4. EMA smoothed health ─────────────────────────────
-        health_score = _buffer.smooth_health(raw_health)
+        health_score = buf.smooth_health(raw_health)
 
         # ── 5. Trend adjustment ────────────────────────────────
-        trend = _buffer.get_vibration_trend()
+        trend = buf.get_vibration_trend()
         # If strongly degrading, penalize health slightly more
         if trend > 0.1 and not is_motor_off:
             health_score = max(health_score - (trend * 5), 5.0)
@@ -374,14 +445,16 @@ def predict(data: dict) -> dict:
 
         # ── 6. Raw RUL + smoothed RUL ─────────────────────────
         raw_rul      = _estimate_rul_raw(health_score)
-        rul_hours    = _buffer.smooth_rul(raw_rul, is_motor_off)
+        rul_hours    = buf.smooth_rul(raw_rul, is_motor_off)
 
         # ── 7. Status ──────────────────────────────────────────
+        # (Before: severity 1 "warning" was read as "bearing fault" and
+        #  made the machine critical → STOP on a mere warning.)
         if is_motor_off:
             status = "normal"
-        elif health_score < 50 or fault_type in ("bearing fault", "overheating"):
+        elif severity == 2 or health_score < 50:
             status = "critical"
-        elif health_score < 75 or is_anomaly:
+        elif severity == 1 or health_score < 75 or is_anomaly or threshold_warning:
             status = "warning"
         else:
             status = "normal"
@@ -396,7 +469,9 @@ def predict(data: dict) -> dict:
             "rul_hours":    rul_hours,
             "status":       status,
             "fault_type":   fault_type,
-            "confidence":   round(rf_confidence, 2),
+            "fault_source": fault_source,             # "ml" | "rule" | None
+            "severity":     SEVERITY_NAMES.get(severity, "normal"),
+            "confidence":   round(fault_conf if fault_type != "none" else rf_confidence, 2),
             "anomaly":      is_anomaly,
             "health_score": health_score,
             "alerts":       alerts,
@@ -406,12 +481,62 @@ def predict(data: dict) -> dict:
 
     except Exception as e:
         print(f"[ML] Prediction error: {e} — using fallback")
-        return _fallback_predict(data, is_motor_off)
+        return _fallback_predict(data, is_motor_off, buf)
+
+
+def _num(data: dict, key: str) -> float:
+    try:
+        return float(data.get(key, 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _glitch_result(data: dict, fields: list, buf: "SensorBuffer") -> dict:
+    """Reading with impossible values: ignored, last known state kept, warning raised."""
+    health = buf._ema_health if buf._ema_health is not None else 100.0
+    shown  = ", ".join(f"{f}={data.get(f)}" for f in fields)
+    return {
+        "failure_risk": round(100 - health, 1),
+        "rul_hours":    buf._last_rul if buf._last_rul is not None else 720,
+        "status":       "warning",
+        "fault_type":   "none",
+        "fault_source": None,
+        "severity":     "warning",
+        "confidence":   0.0,
+        "anomaly":      False,
+        "health_score": round(health, 1),
+        "alerts":       [{
+            "type":      "sensor_glitch",
+            "message":   f"Implausible sensor value ({shown}) — reading ignored, check the sensor",
+            "severity":  "warning",
+            "timestamp": int(time.time() * 1000),
+        }],
+        "motor_off":    False,
+        "trend":        round(buf.get_vibration_trend(), 4),
+    }
+
+
+def _rule_fault_type(data: dict) -> str:
+    """Same rules lable_data.py used to label the training data."""
+    def sf(key):
+        try: return float(data.get(key, 0))
+        except (TypeError, ValueError): return 0.0
+    amax = max(sf("aRMSx"), sf("aRMSy"), sf("aRMSz"))
+    vmax = max(sf("vRMSx"), sf("vRMSy"), sf("vRMSz"))
+    if amax > 1.0 and vmax < 4.0:
+        return "bearing fault"
+    if sf("vRMSx") > 3.0 and sf("vRMSy") > 3.0:
+        return "misalignment"
+    if vmax > 4.0 and sf("aucausticRMS") > 60:
+        return "imbalance"
+    if sf("temperature") > 50:
+        return "overheating"
+    return "bearing fault"
 
 
 # ─── Fallback (no models) ─────────────────────────────────────
 
-def _fallback_predict(data: dict, is_motor_off: bool = False) -> dict:
+def _fallback_predict(data: dict, is_motor_off: bool = False, buf: "SensorBuffer | None" = None) -> dict:
     """Threshold-based fallback when models not loaded."""
     def sf(key):
         try: return float(data.get(key, 0))
@@ -428,10 +553,11 @@ def _fallback_predict(data: dict, is_motor_off: bool = False) -> dict:
     if is_motor_off:
         health = max(health, 80.0)
 
+    buf          = buf if buf is not None else _buffer
     health       = float(max(health, 0))
-    smoothed     = _buffer.smooth_health(health)
+    smoothed     = buf.smooth_health(health)
     raw_rul      = int((smoothed / 100) ** 2 * 720)
-    rul_hours    = _buffer.smooth_rul(raw_rul, is_motor_off)
+    rul_hours    = buf.smooth_rul(raw_rul, is_motor_off)
     failure_risk = round(100 - smoothed, 1)
     confidence   = round(min(0.5 + failure_risk / 200, 0.99), 2)
     status       = "critical" if smoothed < 50 else "warning" if smoothed < 75 else "normal"
@@ -447,7 +573,9 @@ def _fallback_predict(data: dict, is_motor_off: bool = False) -> dict:
         "health_score": smoothed,
         "alerts":       alerts,
         "motor_off":    is_motor_off,
-        "trend":        round(_buffer.get_vibration_trend(), 4),
+        "trend":        round(buf.get_vibration_trend(), 4),
+        "fault_source": "rule" if faults else None,
+        "severity":     "fault" if status == "critical" else "warning" if status == "warning" else "normal",
     }
 
 
