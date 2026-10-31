@@ -3,6 +3,7 @@ import { Search, Calendar, ChevronLeft, ChevronRight, WifiOff, Download } from '
 import { SensorData } from '@/types/sensor';
 import { searchHistory, historyExportUrl } from '@/services/api';
 import TopBar from '@/components/dashboard/TopBar';
+import { hideSplash } from '@/lib/splash';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -56,7 +57,7 @@ const History = () => {
       })
       // No mock fallback — an empty table with an error is honest, fake rows are not
       .catch(() => { if (!cancelled) setLoadError(true); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => { hideSplash(); if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [startMs, endMs, query, page]);
 

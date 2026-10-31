@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DemoSessionInfo, DemoTick, ForecastPoint, SensorData } from '@/types/sensor';
 import { DEMO_STREAM_URL } from '@/services/api';
+import { hideSplash, setSplashText } from '@/lib/splash';
 
 const MAX_POINTS = 300;   // 5 minutes at 1 reading / s
 
@@ -20,10 +21,14 @@ export function useDemoStream() {
     const source = new EventSource(DEMO_STREAM_URL);
     const parse = <T,>(e: Event) => JSON.parse((e as MessageEvent).data) as T;
 
-    source.onerror = () => setConnected(false);
+    source.onerror = () => {
+      setSplashText('Waiting for the backend (port 5005)…');
+      setConnected(false);
+    };
     source.addEventListener('session', e => {
       // A reconnect creates a new session on the backend → start clean
       const s = parse<DemoSessionInfo>(e);
+      hideSplash();
       setInfo(s);
       setHistory(s.history.map(r => ({ ...r, timestamp: Number(r.timestamp) })));
       setHealth([]);

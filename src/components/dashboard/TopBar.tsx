@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Wifi, WifiOff, LayoutDashboard, Clock, FlaskConical } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import FullscreenButton from '@/components/dashboard/FullscreenButton';
 
 // ✅ Sahi path — tera logo yahan hai
 import logo from '@/components/assets/YASH-LOGO.svg';
@@ -22,7 +23,7 @@ const TopBar = ({ isConnected, useMock }: TopBarProps) => {
   }, []);
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-border bg-card/50 backdrop-blur-sm">
+    <header className="topbar-enter flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-border bg-card/50 backdrop-blur-sm">
       <div className="flex items-center gap-4">
 
         <div className="flex items-center gap-2">
@@ -92,6 +93,8 @@ const TopBar = ({ isConnected, useMock }: TopBarProps) => {
             <><Wifi size={12} /><span>Connected</span></>
           )}
         </div>
+
+        <FullscreenButton />
       </div>
     </header>
   );

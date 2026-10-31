@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Alert, ControlStatus, LiveData, PredictionData, RawAlert, StreamStatus } from '@/types/sensor';
 import { STREAM_URL, fetchAlerts, toAlert } from '@/services/api';
 import { LiveState } from '@/components/dashboard/DataStatusBanner';
+import { hideSplash, setSplashText } from '@/lib/splash';
 
 const MAX_ALERTS = 50;
 
@@ -27,12 +28,14 @@ export function useLiveStream() {
 
     source.onopen = () => loadAlerts();   // (re)connected → catch up on alerts missed meanwhile
     source.onerror = () => {
+      setSplashText('Waiting for the backend (port 5005)…');
       setLiveState('offline');
       setControl(null);
     };
 
     source.addEventListener('status', e => {
       const status = parse<StreamStatus>(e);
+      hideSplash();
       setLiveState(status.has_data ? 'ok' : 'no-data');
       setControl(status.control);
       if (!status.has_data) setPrediction(null);

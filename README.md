@@ -137,6 +137,13 @@ sensor → fan rotor). Drag to rotate, scroll to zoom, **Reset view** to go back
 - three.js is bundled (works offline). Rendering pauses when the view is off screen. Computers
   without WebGL show a short message instead; the rest of the dashboard is unaffected.
 
+⛶ Full screen and loading screen
+
+- The **full-screen button** at the top right (on every page) hides the browser's tabs, address
+  bar and the taskbar so only the dashboard is visible. **Esc** or the same button leaves it.
+- On every load a **YASH loading screen** (logo + animated bar) is shown until the first live data
+  arrives (at least 0.9 s, at most 6 s — then the page shows its own "backend unreachable" notice).
+
 🖥️ Screen sizes
 
 On screens 1280 px wide and larger the whole interface scales with the window (1280×720 up to

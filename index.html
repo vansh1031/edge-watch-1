@@ -3,22 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
     <title>EDGE AI – Predictive Maintenance Dashboard</title>
     <meta name="description" content="Industrial AI dashboard for predictive maintenance with real-time sensor monitoring" />
-    <meta name="author" content="Yash Technology" />
+    <meta name="author" content="Vanshraj Singh Rathore" />
 
     <meta property="og:title" content="EDGE AI – Predictive Maintenance Dashboard" />
     <meta property="og:description" content="Industrial AI dashboard for predictive maintenance with real-time sensor monitoring" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="" />
+    <!-- Loading screen: inline so it shows before the app's JavaScript has loaded.
+         src/lib/splash.ts hides it once the first live data arrives. -->
+    <style>
+      .splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #0e1117;
+                color: #e6ebf2; font-family: Inter, system-ui, "Segoe UI", sans-serif;
+                transition: opacity .6s cubic-bezier(.2, .8, .2, 1), visibility .6s; }
+      body:not(.booting) .splash { opacity: 0; visibility: hidden; }
+      .splash-inner { text-align: center; animation: splash-rise .8s cubic-bezier(.2, .8, .2, 1) both; }
+      .splash-logo { width: 190px; max-width: 50vw; height: auto; }
+      .splash-title { margin-top: 18px; font-size: 20px; font-weight: 650; letter-spacing: .03em; }
+      .splash-title span { color: #1aa3ff; }
+      .splash-bar { width: 240px; max-width: 60vw; height: 3px; margin: 22px auto 10px; border-radius: 3px; background: #253042; overflow: hidden; }
+      .splash-bar span { display: block; height: 100%; width: 40%; border-radius: 3px;
+                         background: linear-gradient(90deg, #1aa3ff, #22c55e); animation: splash-load 1.1s ease-in-out infinite; }
+      .splash-sub { color: #7f8ba0; font-size: 13px; min-height: 1.2em; }
+      @keyframes splash-load { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+      @keyframes splash-rise { from { opacity: 0; transform: translateY(14px); } }
+      @media (prefers-reduced-motion: reduce) {
+        .splash-inner { animation: none; }
+        .splash-bar span { animation-duration: 3s; }
+      }
+    </style>
   </head>
 
-  <body>
+  <body class="booting">
+    <div class="splash" id="splash" role="status" aria-live="polite">
+      <div class="splash-inner">
+        <img src="/yash-logo.svg" alt="YASH Technologies" class="splash-logo" />
+        <div class="splash-title"><span>EDGE AI</span> Predictive Maintenance</div>
+        <div class="splash-bar"><span></span></div>
+        <div class="splash-sub" id="splashSub">Loading dashboard…</div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

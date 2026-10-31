@@ -143,3 +143,8 @@
   .machine-tag-axis { font-family: var(--font-mono); font-weight: 600; font-size: 0.75rem; padding: 0.2rem 0.4rem; }
   .machine-tag-axis[data-level="ok"] { border-color: hsl(var(--border)); }
 }
+
+/* Top bar slides in as the loading screen fades out (same as the all-in-one dashboard) */
+@keyframes topbar-enter { from { opacity: 0; transform: translateY(-12px); } }
+.topbar-enter { animation: topbar-enter .6s cubic-bezier(.2, .8, .2, 1) both .15s; }
+@media (prefers-reduced-motion: reduce) { .topbar-enter { animation: none; } }
